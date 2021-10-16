@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 
 class SongObject:
@@ -16,10 +16,7 @@ class SongObject:
     # Equals method
     # for example song_obj1 == song_obj2
     def __eq__(self, compared_song) -> bool:
-        if compared_song.data_dump == self.data_dump:
-            return True
-        else:
-            return False
+        return compared_song.data_dump == self.data_dump
 
     # ================================
     # === Interface Implementation ===
@@ -79,13 +76,7 @@ class SongObject:
         # $contributingArtists + songName.mp3, we would want to end up with
         # 'Jetta, Mastubs - I'd love to change the world (Mastubs remix).mp3'
         # as a song name, it's dumb.
-
-        contributingArtists = []
-
-        for artist in self._raw_track_meta["artists"]:
-            contributingArtists.append(artist["name"])
-
-        return contributingArtists
+        return [artist["name"] for artist in self._raw_track_meta["artists"]]
 
     @property
     def disc_number(self) -> int:
@@ -123,12 +114,7 @@ class SongObject:
         artist.
         """
 
-        albumArtists = []
-
-        for artist in self._raw_track_meta["album"]["artists"]:
-            albumArtists.append(artist["name"])
-
-        return albumArtists
+        return [artist["name"] for artist in self._raw_track_meta["album"]["artists"]]
 
     @property
     def album_release(self) -> str:
@@ -141,12 +127,17 @@ class SongObject:
     # ! Utilities for genuine use and also for metadata freaks:
 
     @property
-    def album_cover_url(self) -> str:
+    def album_cover_url(self) -> Optional[str]:
         """
         returns url of the biggest album art image available.
         """
 
-        return self._raw_track_meta["album"]["images"][0]["url"]
+        images = self._raw_track_meta["album"]["images"]
+
+        if len(images) > 0:
+            return images[0]["url"]
+
+        return None
 
     @property
     def data_dump(self) -> dict:

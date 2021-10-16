@@ -1,14 +1,14 @@
 import requests
 
 from typing import List
-from rapidfuzz import fuzz
+from thefuzz import fuzz
 from bs4 import BeautifulSoup
 from pathlib import Path
 
 
 def _match_percentage(str1: str, str2: str, score_cutoff: float = 0) -> float:
     """
-    A wrapper around `rapidfuzz.fuzz.partial_ratio` to handle UTF-8 encoded
+    A wrapper around `thefuzz.fuzz.partial_ratio` to handle UTF-8 encoded
     emojis that usually cause errors
 
     `str` `str1` : a random sentence
@@ -21,24 +21,34 @@ def _match_percentage(str1: str, str2: str, score_cutoff: float = 0) -> float:
 
     # ! this will throw an error if either string contains a UTF-8 encoded emoji
     try:
-        return fuzz.partial_ratio(str1, str2, score_cutoff=score_cutoff)
+        partial_ratio = fuzz.partial_ratio(str1, str2)
+
+        if partial_ratio < score_cutoff:
+            return 0
+
+        return partial_ratio
 
     # ! we build new strings that contain only alphanumerical characters and spaces
     # ! and return the partial_ratio of that
     except:  # noqa:E722
-        new_str1 = ""
+        new_str1 = "".join(
+            each_letter
+            for each_letter in str1
+            if each_letter.isalnum() or each_letter.isspace()
+        )
 
-        for each_letter in str1:
-            if each_letter.isalnum() or each_letter.isspace():
-                new_str1 += each_letter
+        new_str2 = "".join(
+            each_letter
+            for each_letter in str2
+            if each_letter.isalnum() or each_letter.isspace()
+        )
 
-        new_str2 = ""
+        partial_ratio = fuzz.partial_ratio(new_str1, new_str2)
 
-        for each_letter in str2:
-            if each_letter.isalnum() or each_letter.isspace():
-                new_str2 += each_letter
+        if partial_ratio < score_cutoff:
+            return 0
 
-        return fuzz.partial_ratio(new_str1, new_str2, score_cutoff=score_cutoff)
+        return partial_ratio
 
 
 def _parse_duration(duration: str) -> float:
@@ -48,10 +58,7 @@ def _parse_duration(duration: str) -> float:
     try:
         # {(1, "s"), (60, "m"), (3600, "h")}
         mapped_increments = zip([1, 60, 3600], reversed(duration.split(":")))
-        seconds = 0
-        for multiplier, time in mapped_increments:
-            seconds += multiplier * int(time)
-
+        seconds = sum(multiplier * int(time) for multiplier, time in mapped_increments)
         return float(seconds)
 
     # ! This usually occurs when the wrong string is mistaken for the duration
